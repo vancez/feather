@@ -25,6 +25,11 @@ struct SourcesView: View {
 		_sources.filter { _searchText.isEmpty || ($0.name?.localizedCaseInsensitiveContains(_searchText) ?? false) }
 	}
 	
+	/// nil when no sources are being fetched
+	private var _progress: Double? {
+		viewModel.progress(for: _sources)
+	}
+	
 	@FetchRequest(
 		entity: AltSource.entity(),
 		sortDescriptors: [NSSortDescriptor(keyPath: \AltSource.name, ascending: true)],
@@ -75,6 +80,14 @@ struct SourcesView: View {
 				}
 			}
 			.searchable(text: $_searchText, placement: .platform())
+			.overlay(alignment: .top) {
+				if let _progress {
+					ProgressView(value: _progress)
+						.progressViewStyle(.linear)
+						.tint(Color.accentColor)
+				}
+			}
+			.animation(.easeInOut(duration: 0.25), value: _progress)
 			.overlay {
 				if _filteredSources.isEmpty {
 					if #available(iOS 17, *) {

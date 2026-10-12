@@ -18,10 +18,25 @@ final class SourcesViewModel: ObservableObject {
 	
 	private let _dataService = NBFetchService()
 	
-	var isFinished = true
+	@Published var isFinished = true
 	@Published var sources: [AltSource: ASRepository] = [:]
+	/// sources that are queued or currently being fetched
+	@Published var loadingSources: Set<AltSource> = []
 	
-	func fetchSources(_ sources: FetchedResults<AltSource>, refresh: Bool = false, batchSize: Int = 4) async {
+	/// fraction of `sources` that are done loading, `nil` when none of them are being fetched
+	func progress(for sources: some Collection<AltSource>) -> Double? {
+		guard !sources.isEmpty else { return nil }
+
+		let pending = sources.reduce(into: 0) { count, source in
+			if loadingSources.contains(source) { count += 1 }
+		}
+
+		guard pending > 0 else { return nil }
+		return Double(sources.count - pending) / Double(sources.count)
+	}
+
+	@MainActor
+	func fetchSources(_ sources: some Collection<AltSource>, refresh: Bool = false, batchSize: Int = 4) async {
 		guard isFinished else { return }
 		
 		// check if sources to be fetched are the same as before, if yes, return
@@ -30,19 +45,15 @@ final class SourcesViewModel: ObservableObject {
 		
 		// isfinished is used to prevent multiple fetches at the same time
 		isFinished = false
-		defer { isFinished = true }
-		
-		await MainActor.run {
-			self.sources = [:]
-		}
 		
 		let sourcesArray = Array(sources)
+		loadingSources.formUnion(sourcesArray)
 		
 		for startIndex in stride(from: 0, to: sourcesArray.count, by: batchSize) {
 			let endIndex = min(startIndex + batchSize, sourcesArray.count)
 			let batch = sourcesArray[startIndex..<endIndex]
 			
-			let batchResults = await withTaskGroup(of: (AltSource, ASRepository?).self, returning: [AltSource: ASRepository].self) { group in
+			await withTaskGroup(of: (AltSource, ASRepository?).self) { group in
 				for source in batch {
 					group.addTask {
 						guard let url = source.sourceURL else {
@@ -62,20 +73,20 @@ final class SourcesViewModel: ObservableObject {
 					}
 				}
 				
-				var results = [AltSource: ASRepository]()
+				// merge in each result as it arrives, so sources that are already
+				// loaded can be displayed without waiting on the rest of them
 				for await (source, repo) in group {
-					if let repo {
-						results[source] = repo
+					await MainActor.run {
+						if let repo {
+							self.sources[source] = repo
+						}
+						self.loadingSources.remove(source)
 					}
-				}
-				return results
-			}
-			
-			await MainActor.run {
-				for (source, repo) in batchResults {
-					self.sources[source] = repo
 				}
 			}
 		}
+		
+		loadingSources.removeAll()
+		isFinished = true
 	}
 }

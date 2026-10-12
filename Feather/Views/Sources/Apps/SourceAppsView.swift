@@ -34,11 +34,8 @@ struct SourceAppsView: View {
 	
 	@State private var _sortOption: SortOption = .default
 	@State private var _selectedRoute: SourceAppRoute?
-	
-	@State var isLoading = true
-	@State var hasLoadedOnce = false
 	@State private var _searchText = ""
-
+	
 	private var _navigationTitle: String {
 		if object.count == 1 {
 			object[0].name ?? .localized("Unknown")
@@ -47,6 +44,11 @@ struct SourceAppsView: View {
 		}
 	}
 	
+	/// nil when none of the sources being displayed are still being fetched
+	private var _progress: Double? {
+		viewModel.progress(for: object)
+	}
+
 	var object: [AltSource]
 	@ObservedObject var viewModel: SourcesViewModel
 	@State private var _sourceContexts: [SourceRepositoryContext]?
@@ -63,13 +65,32 @@ struct SourceAppsView: View {
 					searchText: $_searchText,
 					sortOption: $_sortOption,
 					sortAscending: $_sortAscending,
-					onSelect: {self._selectedRoute = $0}
+					onSelect: {self._selectedRoute = $0},
+					onRefresh: { await viewModel.fetchSources(object, refresh: true) }
 				)
 				.ignoresSafeArea()
-			} else {
+			} else if _progress != nil || !viewModel.isFinished || _sourceContexts == nil {
 				ProgressView()
+			} else {
+				VStack(spacing: 6) {
+					Image(systemName: "exclamationmark.triangle")
+						.font(.title2)
+					Text(.localized("Unable to load repositories"))
+						.font(.subheadline)
+						.multilineTextAlignment(.center)
+				}
+				.foregroundStyle(.secondary)
+				.padding()
 			}
 		}
+		.overlay(alignment: .top) {
+			if let _progress {
+				ProgressView(value: _progress)
+					.progressViewStyle(.linear)
+					.tint(Color.accentColor)
+			}
+		}
+		.animation(.easeInOut(duration: 0.25), value: _progress)
 		.navigationTitle(_navigationTitle)
 		.searchable(text: $_searchText, placement: .platform())
 		.toolbarTitleMenu {
@@ -119,15 +140,11 @@ struct SourceAppsView: View {
 			}
 		}
 		.onAppear {
-			if !hasLoadedOnce, viewModel.isFinished {
-				_load()
-				hasLoadedOnce = true
-			}
+			_load(from: viewModel.sources)
 			_sortOption = SortOption(rawValue: _sortOptionRawValue) ?? .default
+			Task { await viewModel.fetchSources(object) }
 		}
-		.onChange(of: viewModel.isFinished) { _ in
-			_load()
-		}
+		.onReceive(viewModel.$sources) { _load(from: $0) }
 		.onChange(of: _sortOption) { newValue in
 			_sortOptionRawValue = newValue.rawValue
 		}
@@ -140,18 +157,10 @@ struct SourceAppsView: View {
 		}
 	}
 	
-	private func _load() {
-		isLoading = true
-		
-		Task {
-			let loadedSources = object.compactMap { source -> SourceRepositoryContext? in
-				guard let repository = viewModel.sources[source] else { return nil }
-				return SourceRepositoryContext(sourceURL: source.sourceURL, repository: repository)
-			}
-			_sourceContexts = loadedSources
-			withAnimation(.easeIn(duration: 0.2)) {
-				isLoading = false
-			}
+	private func _load(from sources: [AltSource: ASRepository]) {
+		_sourceContexts = object.compactMap { source -> SourceRepositoryContext? in
+			guard let repository = sources[source] else { return nil }
+			return SourceRepositoryContext(sourceURL: source.sourceURL, repository: repository)
 		}
 	}
 	

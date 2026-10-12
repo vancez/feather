@@ -15,6 +15,7 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 	@Binding var sortOption: SourceAppsView.SortOption
 	@Binding var sortAscending: Bool
 	var onSelect: (SourceAppsView.SourceAppRoute) -> Void
+	var onRefresh: () async -> Void
 	
 	func makeUIView(context: Context) -> UITableView {
 		let tableView = UITableView(frame: .zero, style: .plain)
@@ -22,6 +23,14 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 		tableView.dataSource = context.coordinator
 		tableView.register(UITableViewCell.self, forCellReuseIdentifier: "AppCell")
 		tableView.register(UITableViewHeaderFooterView.self, forHeaderFooterViewReuseIdentifier: "SectionHeader")
+		
+		let refreshControl = UIRefreshControl()
+		refreshControl.addTarget(
+			context.coordinator,
+			action: #selector(Coordinator._handleRefresh(_:)),
+			for: .valueChanged
+		)
+		tableView.refreshControl = refreshControl
 		
 		if #available(iOS 17, *) {
 			tableView.allowsSelection = true
@@ -68,6 +77,7 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 		context.coordinator.searchText = searchText
 		context.coordinator.sortOption = sortOption
 		context.coordinator.sortAscending = sortAscending
+		context.coordinator.onRefresh = onRefresh
 		
 		if sourcesChanged || searchChanged || sortOptionChanged || sortDirectionChanged {
 			context.coordinator.invalidateCache()
@@ -80,7 +90,8 @@ struct SourceAppsTableRepresentableView: UIViewRepresentable {
 			searchText: searchText,
 			sortOption: sortOption,
 			sortAscending: sortAscending,
-			onSelect: onSelect
+			onSelect: onSelect,
+			onRefresh: onRefresh
 		)
 	}
 }
@@ -92,6 +103,7 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 	var sortOption: SourceAppsView.SortOption
 	var sortAscending: Bool
 	let onSelect: (SourceAppsView.SourceAppRoute) -> Void
+	var onRefresh: () async -> Void
 	
 	private var _groupedAppsByNameFirstLetter: [String: [SourceAppEntry]] = [:]
 	private var _groupedAppsByDate: [String: [SourceAppEntry]] = [:]
@@ -125,17 +137,27 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 		searchText: String,
 		sortOption: SourceAppsView.SortOption,
 		sortAscending: Bool,
-		onSelect: @escaping (SourceAppsView.SourceAppRoute) -> Void
+		onSelect: @escaping (SourceAppsView.SourceAppRoute) -> Void,
+		onRefresh: @escaping () async -> Void
 	) {
 		self.sourceContexts = sourceContexts
 		self.searchText = searchText
 		self.sortOption = sortOption
 		self.sortAscending = sortAscending
 		self.onSelect = onSelect
+		self.onRefresh = onRefresh
 		super.init()
 		
 		if sortOption != .default {
 			invalidateCache()
+		}
+	}
+	
+	@objc func _handleRefresh(_ sender: UIRefreshControl) {
+		Task { @MainActor in
+			// fetchSources skips itself when a fetch is already in flight
+			await onRefresh()
+			sender.endRefreshing()
 		}
 	}
 	
