@@ -120,29 +120,7 @@ struct SigningView: View {
 			.animation(.smooth, value: _isSigning)
 		}
 		.onAppear {
-			// ppq protection
-			if
-				_optionsManager.options.ppqProtection,
-				let identifier = app.identifier,
-				let cert = _selectedCert(),
-				cert.ppQCheck
-			{
-				_temporaryOptions.appIdentifier = "\(identifier).\(_optionsManager.options.ppqString)"
-			}
-			
-			if
-				let currentBundleId = app.identifier,
-				let newBundleId = _temporaryOptions.identifiers[currentBundleId]
-			{
-				_temporaryOptions.appIdentifier = newBundleId
-			}
-			
-			if
-				let currentName = app.name,
-				let newName = _temporaryOptions.displayNames[currentName]
-			{
-				_temporaryOptions.appName = newName
-			}
+			_temporaryOptions = _temporaryOptions.derivedForApp(app, certificate: _selectedCert())
 		}
 	}
 }
@@ -284,25 +262,25 @@ extension SigningView {
 			using: _temporaryOptions,
 			icon: appIcon,
 			certificate: _selectedCert()
-		) { error in
-			if let error {
+		) { result in
+			switch result {
+			case .failure(let error):
 				let ok = UIAlertAction(title: .localized("Dismiss"), style: .cancel) { _ in
 					dismiss()
 				}
-				
+
 				UIAlertController.showAlert(
 					title: "Error",
 					message: error.localizedDescription,
 					actions: [ok]
 				)
-			} else {
-				if
-					_temporaryOptions.post_deleteAppAfterSigned,
-					!app.isSigned
-				{
-					Storage.shared.deleteApp(for: app)
-				}
-				
+			case .success(let producedUUID):
+				FR.finalizePostSigning(
+					source: app,
+					producedUUID: producedUUID,
+					options: _temporaryOptions
+				)
+
 				if _temporaryOptions.post_installAppAfterSigned {
 					DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
 						NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)

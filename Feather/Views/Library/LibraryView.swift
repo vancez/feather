@@ -23,6 +23,7 @@ struct LibraryView: View {
 	// MARK: Selection State
 	@State private var _selectedAppUUIDs: Set<String> = []
 	@State private var _editMode: EditMode = .inactive
+	@State private var _batchSelection: BatchSelection?
 	
 	@State private var _searchText = ""
 	@State private var _selectedScope: Scope = .all
@@ -45,7 +46,7 @@ struct LibraryView: View {
 	private var _filteredImportedApps: [Imported] {
 		filteredAndSortedApps(from: _importedApps)
 	}
-	
+
 	// MARK: Fetch
 	@FetchRequest(
 		entity: Signed.entity(),
@@ -136,8 +137,16 @@ struct LibraryView: View {
 				ToolbarItem(placement: .topBarLeading) {
 					EditButton()
 				}
-				
+
 				if _editMode.isEditing {
+					NBToolbarButton(
+						.localized("Sign"),
+						systemImage: "signature",
+						isDisabled: _selectedAppUUIDs.isEmpty || BatchSignCoordinator.shared.isRunning
+					) {
+						_batchSignSelectedApps()
+					}
+
 					NBToolbarButton(
 						.localized("Delete"),
 						systemImage: "trash",
@@ -167,6 +176,20 @@ struct LibraryView: View {
 			.fullScreenCover(item: $_selectedSigningAppPresenting) { app in
 				SigningView(app: app.base)
 					.compatNavigationTransition(id: app.base.uuid ?? "", ns: _namespace)
+			}
+			.sheet(item: $_batchSelection, onDismiss: {
+				// A finished run signs to new uuids and may have removed the sources, so its
+				// selection no longer refers to anything worth keeping. Backing out of the sheet
+				// without starting is not a run, and leaves the selection alone.
+				if BatchSignCoordinator.shared.stage == .finished {
+					_selectedAppUUIDs.removeAll()
+				}
+
+				// Reset here rather than in the sheet's own `onDisappear`, which can fire while
+				// the sheet is still on screen and would drop the run's results out from under it.
+				BatchSignCoordinator.shared.reset()
+			}) { selection in
+				BatchSignView(sources: selection.sources)
 			}
 			.sheet(isPresented: $_isImportingPresenting) {
 				FileImporterRepresentableView(
@@ -223,8 +246,23 @@ extension LibraryView {
 	}
 }
 
-// MARK: - Extension: Bulk Delete
+// MARK: - Extension: Bulk Actions
 extension LibraryView {
+	/// Presents the batch signing sheet for the current selection.
+	///
+	/// The selection is snapshotted up front: a run with "delete after signing" on removes the
+	/// source rows as it goes, so the sheet cannot be handed something that re-resolves later.
+	private func _batchSignSelectedApps() {
+		let selection = _getAllApps().filter { app in
+			guard let uuid = app.uuid else { return false }
+			return _selectedAppUUIDs.contains(uuid)
+		}
+
+		guard !selection.isEmpty else { return }
+
+		_batchSelection = BatchSelection(sources: selection)
+	}
+
 	private func _bulkDeleteSelectedApps() {
 		let selectedApps = _getAllApps().filter { app in
 			guard let uuid = app.uuid else { return false }

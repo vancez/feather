@@ -87,6 +87,16 @@ final class ArchiveHandler: NSObject {
 		return dest
 	}
 	
+	/// Removes the temporary directory this handler built the IPA in.
+	///
+	/// Only safe once the device has finished taking the payload — the local install server
+	/// streams the IPA straight out of this directory, so cleaning up mid-transfer would fail
+	/// an install that was otherwise going fine. A batch run reclaims one app's worth of disk
+	/// as it goes instead of waiting for the next cold launch.
+	func clean() {
+		try? _fileManager.removeItem(at: _uniqueWorkDir)
+	}
+
 	static func getCompressionLevel() -> Int {
 		UserDefaults.standard.integer(forKey: "Feather.compressionLevel")
 	}

@@ -115,7 +115,20 @@ struct Options: Codable, Equatable {
 	var post_installAppAfterSigned: Bool
 	/// This will delete your imported application after signing, to save on using unneeded space.
 	var post_deleteAppAfterSigned: Bool
-	
+	/// Queue an install for every app after a batch signing run finishes.
+	///
+	/// Optional on purpose. `Options` relies on synthesized `Codable`, and `OptionsManager`
+	/// resets to the defaults *and rewrites the stored JSON* whenever decoding throws, so a
+	/// non-optional field would silently wipe everyone's saved configuration on upgrade.
+	/// Optionals decode through `decodeIfPresent`, so a missing key just reads as `nil`.
+	var post_installAppAfterBatchSigning: Bool?
+
+	/// Non-optional view of ``post_installAppAfterBatchSigning``, for `Toggle` bindings.
+	var installAfterBatchSigning: Bool {
+		get { post_installAppAfterBatchSigning ?? false }
+		set { post_installAppAfterBatchSigning = newValue }
+	}
+
 	// MARK: - Defaults
 	static let defaultOptions = Options(
 		
@@ -155,7 +168,8 @@ struct Options: Codable, Equatable {
 		// MARK: Post Modifications
 		
 		post_installAppAfterSigned: false,
-		post_deleteAppAfterSigned: false
+		post_deleteAppAfterSigned: false,
+		post_installAppAfterBatchSigning: false
 	)
 	
 	// MARK: duplicate values are not recommended!

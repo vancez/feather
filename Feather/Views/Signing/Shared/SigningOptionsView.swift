@@ -157,8 +157,19 @@ struct SigningOptionsView: View {
 				isOn: $options.post_deleteAppAfterSigned,
 				temporaryValue: temporaryOptions?.post_deleteAppAfterSigned
 			)
+
+			// Global only: a batch run is started from the library, so there is nothing to
+			// configure on the single-app signing screen.
+			if temporaryOptions == nil {
+				_toggle(
+					.localized("Install After Batch Signing"),
+					systemImage: "square.stack.3d.down.right",
+					isOn: $options.installAfterBatchSigning
+				)
+			}
 		} footer: {
 			Text(.localized("This will delete your imported application after signing, to save on using unneeded space."))
+			Text(.localized("Batch signing installs the apps it signs one at a time, in the order they were selected."))
 		}
 		
 		NBSection(.localized("Experiments")) {

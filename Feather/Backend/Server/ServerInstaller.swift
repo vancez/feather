@@ -25,21 +25,49 @@ class ServerInstaller: Identifiable, ObservableObject {
 	@ObservedObject var viewModel: InstallerStatusViewModel
 	private var _server: Application?
 
-	init(app: AppInfoPresentable, viewModel: InstallerStatusViewModel) throws {
+	/// Set when the local server never came up.
+	///
+	/// Initialization deliberately does not throw. Callers build one of these per queued app and
+	/// have to report a failure and move on rather than crash, and a healthy-looking installer
+	/// that silently serves nothing is worse than an explicit error. Non-nil means this instance
+	/// is unusable.
+	private(set) var startupError: Error?
+
+	init(app: AppInfoPresentable, viewModel: InstallerStatusViewModel) {
 		self.app = app
 		self.viewModel = viewModel
-		try _setup()
-		try _configureRoutes()
-		try _server?.server.start()
-		_needsShutdown = true
+
+		do {
+			try _setup()
+			try _configureRoutes()
+			try _server?.server.start()
+			_needsShutdown = true
+		} catch {
+			// A partially built Application still holds an event loop group, and `_needsShutdown`
+			// is never set on this path, so nothing else would ever release it.
+			_server?.shutdown()
+			_server = nil
+			startupError = error
+		}
 	}
-	
+
 	deinit {
 		_shutdownServer()
 	}
-	
+
+	/// Stops the local server and releases its event loop group.
+	///
+	/// Idempotent, and safe to call before `deinit` — `_needsShutdown` makes sure the shutdown
+	/// is only ever performed once. Callers that build a server per app need this so the previous
+	/// one lets go of its port before the next one is created.
+	func shutdown() {
+		_shutdownServer()
+	}
+
 	private func _setup() throws {
-		self._server = try? setupApp(port: port)
+		// Deliberately not `try?`: swallowing this leaves `_server` nil, so the routes are never
+		// bound and the installer reports `.ready` while serving nothing at all.
+		self._server = try setupApp(port: port)
 	}
 		
 	private func _configureRoutes() throws {
@@ -104,8 +132,47 @@ class ServerInstaller: Identifiable, ObservableObject {
 	func getServerMethod() -> Int {
 		UserDefaults.standard.integer(forKey: "Feather.serverMethod")
 	}
-	
+
 	func getIPFix() -> Bool {
 		UserDefaults.standard.bool(forKey: "Feather.ipFix")
+	}
+}
+
+// MARK: - Extension: Creation
+extension ServerInstaller {
+	/// Builds a server, retrying with a fresh random port when a bind loses the race.
+	///
+	/// Ports are drawn at random from a shared range with nothing reserving them, so collisions
+	/// are possible. A single install would only ever hit this by bad luck, but a queue builds
+	/// one of these per app, which makes it worth handling rather than giving up on.
+	static func make(
+		app: AppInfoPresentable,
+		viewModel: InstallerStatusViewModel,
+		attempts: Int = 3
+	) throws -> ServerInstaller {
+		var lastError: Error?
+
+		for _ in 0..<max(1, attempts) {
+			let installer = ServerInstaller(app: app, viewModel: viewModel)
+
+			if let error = installer.startupError {
+				lastError = error
+				continue
+			}
+
+			return installer
+		}
+
+		throw lastError ?? ServerInstallerError.portUnavailable
+	}
+}
+
+enum ServerInstallerError: Error, LocalizedError {
+	case portUnavailable
+
+	var errorDescription: String? {
+		switch self {
+		case .portUnavailable: .localized("Unable to start the local install server.")
+		}
 	}
 }

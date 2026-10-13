@@ -8,7 +8,6 @@
 import SwiftUI
 import NimbleViews
 import IDeviceSwift
-import OSLog
 
 // MARK: - View
 struct InstallPreviewView: View {
@@ -31,7 +30,9 @@ struct InstallPreviewView: View {
 		self.isSharing = isSharing
 		let viewModel = InstallerStatusViewModel(isIdevice: UserDefaults.standard.integer(forKey: "Feather.installationMethod") == 1)
 		self._viewModel = StateObject(wrappedValue: viewModel)
-		self._installer = StateObject(wrappedValue: try! ServerInstaller(app: app, viewModel: viewModel))
+		// Not `try!`: a lost random-port race or unreadable TLS material used to take the whole
+		// app down here. `_install()` reports `startupError` instead.
+		self._installer = StateObject(wrappedValue: ServerInstaller(app: app, viewModel: viewModel))
 	}
 	
 	// MARK: Body
@@ -143,7 +144,17 @@ struct InstallPreviewView: View {
 			)
 			return
 		}
-				
+
+		// The pairing method does its own thing over AFC and never touches this server.
+		if _installationMethod == 0, let error = installer.startupError {
+			UIAlertController.showAlertWithOk(
+				title: .localized("Install"),
+				message: error.localizedDescription,
+				action: { dismiss() }
+			)
+			return
+		}
+
 		Task.detached {
 			do {
 				let handler = await ArchiveHandler(app: app, viewModel: viewModel)
@@ -209,41 +220,6 @@ struct InstallPreviewView: View {
 		bundleID: String,
 		viewModel: InstallerStatusViewModel
 	) -> Task<Void, Never> {
-
-		Task.detached(priority: .background) {
-			var hasStarted = false
-
-			while !Task.isCancelled {
-				let rawProgress = await UIApplication.installProgress(for: bundleID) ?? 0.0
-
-				if rawProgress > 0 {
-					hasStarted = true
-				}
-
-				let progress = await hasStarted
-					? _normalizeInstallProgress(rawProgress)
-					: 0.0
-
-				Logger.misc.info("Install progress for \(bundleID): \(progress)")
-
-				await MainActor.run {
-					viewModel.installProgress = progress
-				}
-
-				if hasStarted && rawProgress == 0 {
-					await MainActor.run {
-						viewModel.installProgress = 1.0
-						viewModel.status = .completed(.success(()))
-					}
-					break
-				}
-
-				try? await Task.sleep(nanoseconds: 1_000_000) // 1 ms
-			}
-		}
-	}
-
-	private func _normalizeInstallProgress(_ rawProgress: Double) -> Double {
-		min(1.0, max(0.0, (rawProgress - 0.6) / 0.3))
+		InstallProgressPoller.start(bundleID: bundleID, viewModel: viewModel)
 	}
 }

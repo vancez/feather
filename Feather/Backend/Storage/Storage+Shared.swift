@@ -39,6 +39,16 @@ extension Storage {
 		}
 		return nil
 	}
+
+	/// Looks up a signed app by the uuid it was written under.
+	/// `addSigned` inserts into the same context this fetches from, so a freshly added row is
+	/// visible here before it has even been saved.
+	func getSignedApp(uuid: String) -> Signed? {
+		let request = NSFetchRequest<Signed>(entityName: "Signed")
+		request.predicate = NSPredicate(format: "uuid == %@", uuid)
+		request.fetchLimit = 1
+		return try? context.fetch(request).first
+	}
 }
 
 // MARK: - Helpers

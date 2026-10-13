@@ -39,32 +39,56 @@ enum FR {
 		}
 	}
 	
+	/// Signs `app`, yielding the uuid the signed copy was written under on success.
 	static func signPackageFile(
 		_ app: AppInfoPresentable,
 		using options: Options,
 		icon: UIImage?,
 		certificate: CertificatePair?,
-		completion: @escaping (Error?) -> Void
+		completion: @escaping (Result<String, Error>) -> Void
 	) {
 		Task.detached {
 			let handler = SigningHandler(app: app, options: options)
 			handler.appCertificate = certificate
 			handler.appIcon = icon
-			
+
 			do {
 				try await handler.copy()
 				try await handler.modify()
 				try? await handler.clean()
+				let uuid = handler.uuid
 				await MainActor.run {
-					completion(nil)
+					completion(.success(uuid))
 				}
 			} catch {
 				try? await handler.clean()
 				await MainActor.run {
-					completion(error)
+					completion(.failure(error))
 				}
 			}
 		}
+	}
+
+	/// Removes the source application once its signed replacement is confirmed to exist.
+	///
+	/// The option reads as "delete your application after signing", so it applies to re-signs too:
+	/// the previous copy is removed rather than left behind as a duplicate entry. The source is
+	/// only ever deleted after the produced `Signed` row is visible, so a sign that threw on the
+	/// way out leaves everything untouched.
+	static func finalizePostSigning(
+		source: AppInfoPresentable,
+		producedUUID: String,
+		options: Options
+	) {
+		guard
+			options.post_deleteAppAfterSigned,
+			producedUUID != source.uuid,
+			Storage.shared.getSignedApp(uuid: producedUUID) != nil
+		else {
+			return
+		}
+
+		Storage.shared.deleteApp(for: source)
 	}
 	
 	static func handleCertificateFiles(

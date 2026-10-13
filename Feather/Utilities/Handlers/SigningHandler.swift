@@ -28,7 +28,11 @@ final class SigningHandler: NSObject {
 	// throw an error
 	var appIcon: UIImage?
 	var appCertificate: CertificatePair?
-	
+
+	/// The uuid this handler writes the signed app under, both on disk and in the database.
+	/// Callers need it to locate the produced `Signed` row without guessing by date or identifier.
+	var uuid: String { _uuid }
+
 	init(app: AppInfoPresentable, options: Options = OptionsManager.shared.options) {
 		self._app = app
 		self._options = options
