@@ -134,32 +134,37 @@ struct LibraryView: View {
 				}
 			}
 			.toolbar {
+				// Nothing below is inserted or removed as the mode flips; both items keep their
+				// type in every state. An `if` at this level swaps one toolbar item for another
+				// while the bar is re-laying out, and a rapid Edit→Done tap can catch that
+				// mid-flight and leave a detached item behind — it renders empty and stops
+				// taking taps, while the list it no longer tracks carries on into edit mode.
 				ToolbarItem(placement: .topBarLeading) {
-					EditButton()
+					// Not EditButton(): it resolves its own title from the toolbar's environment,
+					// which need not agree with the `_editMode` the items below read.
+					Button {
+						_editMode = _editMode.isEditing ? .inactive : .active
+					} label: {
+						Text(_editMode.isEditing ? String.localized("Done") : String.localized("Edit"))
+					}
 				}
 
-				if _editMode.isEditing {
-					NBToolbarButton(
-						.localized("Sign"),
-						systemImage: "signature",
-						isDisabled: _selectedAppUUIDs.isEmpty || BatchSignCoordinator.shared.isRunning
-					) {
-						_batchSignSelectedApps()
-					}
+				NBToolbarMenu(
+					systemImage: _editMode.isEditing ? "ellipsis.circle" : "plus",
+					style: .icon,
+					placement: .topBarTrailing
+				) {
+					if _editMode.isEditing {
+						Button(.localized("Sign"), systemImage: "signature") {
+							_batchSignSelectedApps()
+						}
+						.disabled(_selectedAppUUIDs.isEmpty || BatchSignCoordinator.shared.isRunning)
 
-					NBToolbarButton(
-						.localized("Delete"),
-						systemImage: "trash",
-						isDisabled: _selectedAppUUIDs.isEmpty
-					) {
-						_bulkDeleteSelectedApps()
-					}
-				} else {
-					NBToolbarMenu(
-						systemImage: "plus",
-						style: .icon,
-						placement: .topBarTrailing
-					) {
+						Button(.localized("Delete"), systemImage: "trash", role: .destructive) {
+							_bulkDeleteSelectedApps()
+						}
+						.disabled(_selectedAppUUIDs.isEmpty)
+					} else {
 						_importActions()
 					}
 				}
