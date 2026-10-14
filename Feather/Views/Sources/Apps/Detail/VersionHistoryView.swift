@@ -10,42 +10,42 @@ import AltSourceKit
 
 // MARK: - VersionHistoryView
 struct VersionHistoryView: View {
-	@Environment(\.dismiss) var dismiss
-	
 	let app: ASRepository.App
-	let versions: [ASRepository.App.Version]
-    
+
 	var body: some View {
+		let versions = app.orderedVersions
+
 		ScrollView {
 			LazyVStack(spacing: 12) {
-				ForEach(versions) { version in
-					AppVersionInfo(
-						version: version.version,
-						date: version.date?.date,
-						description: version.localizedDescription ?? .localized("No release notes available")
-					)
+				// Keyed by position rather than `Version.id`: repos reuse version strings,
+				// and duplicate ids would break the diff.
+				ForEach(versions.indices, id: \.self) { index in
+					let version = versions[index]
+
+					HStack(alignment: .top, spacing: 12) {
+						AppVersionInfo(
+							version: version.version,
+							date: version.date?.date,
+							description: version.localizedDescription ?? .localized("No release notes available"),
+							badge: index == 0 ? String.localized("Latest") : nil,
+							size: version.sizeInBytes
+						)
+
+						DownloadButtonView(app: app, version: version, style: .icon)
+					}
 					.padding(.horizontal)
 					.background(Color(.systemBackground))
 					.contextMenu {
-						if let downloadURL = version.downloadURL {
-							Button {
-								_ = DownloadManager.shared.startDownload(
-									from: downloadURL,
-									id: app.currentUniqueId
-								)
-								dismiss()
-							} label: {
-								Label(version.version, systemImage: "arrow.down")
-							}
-                            
-							Button {
+						Button {
+							if let downloadURL = version.downloadURL {
 								UIPasteboard.general.string = downloadURL.absoluteString
-							} label: {
-								Label(.localized("Copy Download URL"), systemImage: "doc.on.clipboard")
 							}
+						} label: {
+							Label(.localized("Copy Download URL"), systemImage: "doc.on.clipboard")
 						}
+						.disabled(version.downloadURL == nil)
 					}
-                    
+
 					Divider().padding(.horizontal)
 				}
 			}
@@ -53,4 +53,3 @@ struct VersionHistoryView: View {
 		}
 	}
 }
-

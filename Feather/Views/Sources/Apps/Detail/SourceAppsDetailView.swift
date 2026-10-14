@@ -6,23 +6,15 @@
 //
 
 import SwiftUI
-import Combine
 import AltSourceKit
 import NimbleViews
 import NukeUI
 
 // MARK: - SourceAppsDetailView
 struct SourceAppsDetailView: View {
-	@ObservedObject var downloadManager = DownloadManager.shared
-	@State private var _downloadProgress: Double = 0
-	@State var cancellable: AnyCancellable? // Combine
 	@State private var _isScreenshotPreviewPresented: Bool = false
 	@State private var _selectedScreenshotIndex: Int = 0
-	
-	var currentDownload: Download? {
-		downloadManager.getDownload(by: app.currentUniqueId)
-	}
-	
+
 	var source: ASRepository
 	var app: ASRepository.App
 	
@@ -57,7 +49,7 @@ struct SourceAppsDetailView: View {
 						
 						Spacer()
 						
-						DownloadButtonView(app: app)
+						DownloadButtonView(app: app, allowsVersionSelection: true)
 					}
 					.lineLimit(2)
 					.frame(maxWidth: .infinity, alignment: .leading)
@@ -75,19 +67,20 @@ struct SourceAppsDetailView: View {
 					Divider()
 				}
 				
-				if
-					let currentVer = app.currentVersion,
-					let whatsNewDesc = app.currentAppVersion?.localizedDescription
-				{
+				if let currentVer = app.currentVersion, let latest = app.latestVersion {
 					NBSection(.localized("What's New")) {
 						AppVersionInfo(
 							version: currentVer,
 							date: app.currentDate?.date,
-							description: whatsNewDesc
+							description: latest.localizedDescription ?? .localized("No release notes available"),
+							size: latest.sizeInBytes
 						)
-						if let versions = app.versions {
+
+						// Gated on the version count alone: release notes are optional, and
+						// a source that omits them still has versions worth installing.
+						if app.orderedVersions.count > 1 {
 							NavigationLink(
-								destination: VersionHistoryView(app: app, versions: versions)
+								destination: VersionHistoryView(app: app)
 									.navigationTitle(.localized("Version History"))
 									.navigationBarTitleDisplayMode(.large)
 							) {
@@ -95,7 +88,7 @@ struct SourceAppsDetailView: View {
 							}
 						}
 					}
-					
+
 					Divider()
 				}
 				
@@ -120,7 +113,7 @@ struct SourceAppsDetailView: View {
 							_infoRow(title: .localized("Developer"), value: developer)
 						}
 						
-						if let size = app.size {
+						if let size = app.latestVersion?.sizeInBytes ?? app.size {
 							_infoRow(title: .localized("Size"), value: size.formattedByteCount)
 						}
 						
@@ -284,7 +277,7 @@ extension SourceAppsDetailView {
 			pills.append(NBPillItem(title: version, icon: "tag", color: Color.accentColor))
 		}
 		
-		if let size = app.size {
+		if let size = app.latestVersion?.sizeInBytes ?? app.size {
 			pills.append(NBPillItem(title: size.formattedByteCount, icon: "archivebox", color: .secondary))
 		}
 		

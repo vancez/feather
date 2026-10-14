@@ -309,28 +309,28 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 			identifier: nil,
 			previewProvider: nil
 		) { _ in
-			let versionsMenu = UIMenu(
+			let copyMenu = UIMenu(
 				title: .localized("Copy Download URLs"),
 				image: UIImage(systemName: "list.bullet"),
 				children: self._contextActions(for: entry.app, with: { version in
-					UIPasteboard.general.string = version?.absoluteString
+					guard let url = version.downloadURL else { return }
+					UIPasteboard.general.string = url.absoluteString
 				}, image: UIImage(systemName: "doc.on.clipboard"))
 			)
-			
-			let downloadsMenu = UIMenu(
+
+			let downloadMenu = UIMenu(
 				title: .localized("Previous Versions"),
 				image: UIImage(systemName: "square.and.arrow.down.on.square"),
 				children: self._contextActions(for: entry.app, with: { version in
-					if let url = version {
-						_ = DownloadManager.shared.startDownload(
-							from: url,
-							id: entry.app.currentUniqueId
-						)
-					}
+					guard let url = version.downloadURL else { return }
+					_ = DownloadManager.shared.startDownload(
+						from: url,
+						id: entry.app.downloadId(for: version)
+					)
 				}, image: UIImage(systemName: "arrow.down"))
 			)
-			
-			return UIMenu(children: [downloadsMenu, versionsMenu])
+
+			return UIMenu(children: [downloadMenu, copyMenu])
 		}
 	}
 	
@@ -338,27 +338,17 @@ extension SourceAppsTableRepresentableView { class Coordinator: NSObject, UITabl
 	
 	private func _contextActions(
 		for app: ASRepository.App,
-		with action: @escaping (URL?) -> Void,
+		with action: @escaping (ASRepository.App.Version) -> Void,
 		image: UIImage?
 	) -> [UIAction] {
-		if let versions = app.versions, !versions.isEmpty {
-			return versions.map { version in
-				UIAction(
-					title: version.version,
-					image: image
-				) { _ in
-					action(version.downloadURL)
-				}
+		app.orderedVersions.map { version in
+			UIAction(
+				title: version.version,
+				image: image,
+				attributes: version.downloadURL == nil ? .disabled : []
+			) { _ in
+				action(version)
 			}
-		} else {
-			return [
-				UIAction(
-					title: app.currentVersion ?? "",
-					image: image
-				) { _ in
-					action(app.currentDownloadUrl)
-				}
-			]
 		}
 	}
 }}

@@ -156,7 +156,13 @@ class DownloadManager: NSObject, ObservableObject {
 	func getDownload(by id: String) -> Download? {
 		return downloads.first(where: { $0.id == id })
 	}
-	
+
+	/// Matches how `startDownload` dedupes: two versions pointing at the same file get
+	/// handed back the first caller's `Download`, whose id the second caller never saw.
+	func getDownload(byURL url: URL) -> Download? {
+		return downloads.first(where: { $0.url == url })
+	}
+
 	func getDownloadIndex(by id: String) -> Int? {
 		return downloads.firstIndex(where: { $0.id == id })
 	}

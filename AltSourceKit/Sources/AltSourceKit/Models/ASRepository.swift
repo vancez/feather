@@ -354,8 +354,10 @@ extension ASRepository {
 			case marketplaceID
 		}
 		
+		/// Repos are not required to publish `versions` in any order, so this reads the
+		/// re-sorted list rather than trusting what the payload happened to send.
 		public var currentAppVersion: Version? {
-			versions?.first
+			sortedVersions.first
 		}
 		
 		public var currentName: String {
@@ -386,9 +388,53 @@ extension ASRepository {
 			subtitle ?? localizedDescription
 		}
 		
+		/// `versions`, newest first. See `VersionOrder` for what "newest" means here.
+		public var sortedVersions: [Version] {
+			VersionOrder.sortedNewestFirst(versions ?? [])
+		}
+		
+		/// Every version this app can install, newest first. Sources still on the older
+		/// top-level `version`/`downloadURL` layout get a single synthesised entry so
+		/// callers only ever deal with one list. Empty means no version info at all.
+		public var orderedVersions: [Version] {
+			let sorted = sortedVersions
+			if !sorted.isEmpty { return sorted }
+		
+			guard
+				version != nil || downloadURL != nil || versionDate != nil || date != nil
+			else {
+				return []
+			}
+		
+			return [
+				Version(
+					version: version ?? "",
+					date: versionDate ?? date,
+					localizedDescription: versionDescription,
+					downloadURL: downloadURL,
+					size: size.flatMap { UInt(exactly: $0) }
+				)
+			]
+		}
+		
+		/// The version the "Get" button installs.
+		public var latestVersion: Version? {
+			orderedVersions.first
+		}
+		
+		/// Identifies one version's download, so two versions of the same app can be
+		/// downloaded — and cancelled — independently.
+		public func downloadId(for version: Version) -> String {
+			"\(id ?? uuid.uuidString).\(version.downloadURL?.absoluteString ?? version.id)"
+		}
+		
 		// "UNIQUE" hahaha
 		public var currentUniqueId: String {
-			"\(id ?? uuid.uuidString).\(downloadURL?.absoluteString ?? uuid.uuidString)"
+			if let latest = orderedVersions.first {
+				return downloadId(for: latest)
+			}
+
+			return "\(id ?? uuid.uuidString).\(downloadURL?.absoluteString ?? uuid.uuidString)"
 		}
 
 		public struct Version: Decodable, Hashable, Identifiable, Comparable, Sendable {
@@ -400,6 +446,30 @@ extension ASRepository {
 			public var downloadURL: URL?
 			public var size: UInt?
 			public var minOSVersion: OSVersion?
+
+			public init(
+				version: String,
+				build: String? = nil,
+				date: DateParsed? = nil,
+				localizedDescription: String? = nil,
+				downloadURL: URL? = nil,
+				size: UInt? = nil,
+				minOSVersion: OSVersion? = nil
+			) {
+				self.version = version
+				self.build = build
+				self.date = date
+				self.localizedDescription = localizedDescription
+				self.downloadURL = downloadURL
+				self.size = size
+				self.minOSVersion = minOSVersion
+			}
+
+			/// `size` in the type the byte formatter takes. Clamped, since a junk size
+			/// decodes as 0 rather than failing.
+			public var sizeInBytes: Int64? {
+				size.map { Int64(clamping: $0) }
+			}
 
 			public init(from decoder: any Decoder) throws {
 				let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -431,9 +501,20 @@ extension ASRepository {
 				)
 			}
 
+			/// Ascending, so "1.10" sorts above "1.9" and a prerelease sits just below
+			/// the release it leads up to.
 			static public func < (lhs: Self, rhs: Self) -> Bool {
-				// compare id
-				lhs.id < rhs.id
+				let version = VersionOrder.compare(lhs.version, rhs.version)
+				if version != .orderedSame {
+					return version == .orderedAscending
+				}
+
+				let build = VersionOrder.compare(lhs.build ?? "", rhs.build ?? "")
+				if build != .orderedSame {
+					return build == .orderedAscending
+				}
+
+				return lhs.id < rhs.id
 			}
 
 			public enum CodingKeys: String, CodingKey {
