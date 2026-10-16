@@ -129,6 +129,20 @@ struct Options: Codable, Equatable {
 		set { post_installAppAfterBatchSigning = newValue }
 	}
 
+	/// Removes the copies of an app that a newer version replaces: the imported ones once the
+	/// download has landed, the signed ones once that version has been signed.
+	///
+	/// Optional for the same reason as ``post_installAppAfterBatchSigning``: `Options` relies
+	/// on synthesized `Codable`, and a missing key would fail the whole decode, which
+	/// `OptionsManager` answers by resetting everyone's saved configuration to the defaults.
+	var post_deleteOldVersions: Bool?
+
+	/// Non-optional view of ``post_deleteOldVersions``, for `Toggle` bindings.
+	var deleteOldVersions: Bool {
+		get { post_deleteOldVersions ?? false }
+		set { post_deleteOldVersions = newValue }
+	}
+
 	// MARK: - Defaults
 	static let defaultOptions = Options(
 		
@@ -169,7 +183,8 @@ struct Options: Codable, Equatable {
 		
 		post_installAppAfterSigned: false,
 		post_deleteAppAfterSigned: false,
-		post_installAppAfterBatchSigning: false
+		post_installAppAfterBatchSigning: false,
+		post_deleteOldVersions: false
 	)
 	
 	// MARK: duplicate values are not recommended!

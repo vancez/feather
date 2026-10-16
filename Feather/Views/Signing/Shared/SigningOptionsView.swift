@@ -172,6 +172,20 @@ struct SigningOptionsView: View {
 			Text(.localized("Batch signing installs the apps it signs one at a time, in the order they were selected."))
 		}
 		
+		// Global only as well: this is about what the library keeps as versions stack up,
+		// which a signing run has no say over.
+		if temporaryOptions == nil {
+			NBSection(.localized("Library")) {
+				_toggle(
+					.localized("Remove Old Versions"),
+					systemImage: "clock.arrow.circlepath",
+					isOn: $options.deleteOldVersions
+				)
+			} footer: {
+				Text(.localized("Once a newer version has been downloaded, the imported copies it replaces are removed; once that version has been signed, the signed copies it replaces are removed as well. A newer version is never removed."))
+			}
+		}
+		
 		NBSection(.localized("Experiments")) {
 			_toggle(
 				.localized("Replace Substrate with ElleKit"),

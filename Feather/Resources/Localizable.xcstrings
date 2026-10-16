@@ -11834,6 +11834,96 @@
         }
       }
     },
+    "Once a newer version has been downloaded, the imported copies it replaces are removed; once that version has been signed, the signed copies it replaces are removed as well. A newer version is never removed." : {
+      "comment" : "Library settings explanation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بعد تنزيل إصدار أحدث، تُحذف النسخ المستوردة التي يحل محلها؛ وبعد توقيع ذلك الإصدار، تُحذف أيضًا النسخ الموقّعة التي يحل محلها. لا يُحذف أي إصدار أحدث."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Po stažení novější verze se odstraní importované kopie, které nahradila; po podepsání této verze se odstraní i podepsané kopie, které nahradila. Novější verze se nikdy neodstraní."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobald eine neuere Version heruntergeladen wurde, werden die importierten Kopien entfernt, die sie ersetzt; sobald diese Version signiert wurde, werden auch die signierten Kopien entfernt, die sie ersetzt. Eine neuere Version wird nie entfernt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Once a newer version has been downloaded, the imported copies it replaces are removed; once that version has been signed, the signed copies it replaces are removed as well. A newer version is never removed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuando se descarga una versión más reciente, se eliminan las copias importadas a las que reemplaza; una vez firmada esa versión, también se eliminan las copias firmadas a las que reemplaza. Nunca se elimina una versión más reciente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une fois une version plus récente téléchargée, les copies importées qu’elle remplace sont supprimées ; une fois cette version signée, les copies signées qu’elle remplace le sont aussi. Une version plus récente n’est jamais supprimée."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setelah versi yang lebih baru diunduh, salinan hasil impor yang digantikannya akan dihapus; setelah versi tersebut ditandatangani, salinan bertanda tangan yang digantikannya juga akan dihapus. Versi yang lebih baru tidak pernah dihapus."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una volta scaricata una versione più recente, le copie importate che sostituisce vengono rimosse; una volta firmata quella versione, vengono rimosse anche le copie firmate che sostituisce. Una versione più recente non viene mai rimossa."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "더 새로운 버전을 다운로드하면 그것이 대체하는 가져온 사본이 제거되고, 그 버전을 서명하면 그것이 대체하는 서명된 사본도 함께 제거됩니다. 더 새로운 버전은 절대 제거되지 않습니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Po pobraniu nowszej wersji usuwane są zastąpione przez nią kopie zaimportowane; po podpisaniu tej wersji usuwane są także zastąpione kopie podpisane. Nowsza wersja nigdy nie zostanie usunięta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После загрузки более новой версии удаляются заменённые ею импортированные копии; после подписывания этой версии удаляются и заменённые ею подписанные копии. Более новая версия никогда не удаляется."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daha yeni bir sürüm indirildiğinde, yerini aldığı içe aktarılan kopyalar kaldırılır; o sürüm imzalandığında, yerini aldığı imzalı kopyalar da kaldırılır. Daha yeni bir sürüm asla kaldırılmaz."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sau khi tải xuống phiên bản mới hơn, các bản sao đã nhập mà nó thay thế sẽ bị xóa; sau khi phiên bản đó được ký, các bản sao đã ký mà nó thay thế cũng sẽ bị xóa. Phiên bản mới hơn sẽ không bao giờ bị xóa."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载到更新的版本后，被它取代的已导入副本会被移除；该版本签名完成后，被它取代的已签名版本也会被移除。更新的版本永远不会被删除。"
+          }
+        }
+      }
+    },
     "Only use localhost address" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13728,6 +13818,96 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "获取beta版来去除这些提示！"
+          }
+        }
+      }
+    },
+    "Remove Old Versions" : {
+      "comment" : "Library settings toggle",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إزالة الإصدارات القديمة"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odstranit staré verze"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alte Versionen entfernen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Old Versions"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar versiones antiguas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer les anciennes versions"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hapus Versi Lama"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rimuovi le versioni precedenti"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이전 버전 제거"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuwaj stare wersje"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалять старые версии"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eski Sürümleri Kaldır"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa phiên bản cũ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除旧版本"
           }
         }
       }

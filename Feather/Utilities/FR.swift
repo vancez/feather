@@ -69,26 +69,50 @@ enum FR {
 		}
 	}
 
-	/// Removes the source application once its signed replacement is confirmed to exist.
+	/// Wraps up a signing run that produced `producedUUID`.
 	///
 	/// The option reads as "delete your application after signing", so it applies to re-signs too:
 	/// the previous copy is removed rather than left behind as a duplicate entry. The source is
 	/// only ever deleted after the produced `Signed` row is visible, so a sign that threw on the
 	/// way out leaves everything untouched.
+	///
+	/// Retiring the signed versions this one replaces happens here rather than on the download
+	/// that came first — see ``Storage/removeSupersededSigned(identifier:version:keeping:sparing:)``.
+	///
+	/// - Parameter sparing: uuids belonging to apps the caller is still working with, which the
+	///   cleanup must leave alone. A batch run passes its whole queue: it snapshots its sources
+	///   up front, so a later item whose superseded copy was just removed would be signing a
+	///   directory that no longer exists.
 	static func finalizePostSigning(
 		source: AppInfoPresentable,
 		producedUUID: String,
-		options: Options
+		options: Options,
+		sparing: [String] = []
 	) {
-		guard
+		// The produced row is the only place that knows what was actually built: the
+		// identifier may have been rewritten (PPQ protection, identifier rules) and the
+		// version overridden, so both are read back off the artifact rather than assumed
+		// from the source it was built out of.
+		guard let produced = Storage.shared.getSignedApp(uuid: producedUUID) else { return }
+
+		if
 			options.post_deleteAppAfterSigned,
-			producedUUID != source.uuid,
-			Storage.shared.getSignedApp(uuid: producedUUID) != nil
-		else {
-			return
+			producedUUID != source.uuid
+		{
+			Storage.shared.deleteApp(for: source)
 		}
 
-		Storage.shared.deleteApp(for: source)
+		if options.deleteOldVersions {
+			// The source is spared explicitly rather than by version: re-signing an app
+			// produces another copy of the version it already had, and whether that one is
+			// kept is "Delete After Signing"'s call, not this option's.
+			Storage.shared.removeSupersededSigned(
+				identifier: produced.identifier,
+				version: produced.version,
+				keeping: producedUUID,
+				sparing: [source.uuid].compactMap { $0 } + sparing
+			)
+		}
 	}
 	
 	static func handleCertificateFiles(

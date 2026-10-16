@@ -205,7 +205,12 @@ extension BatchSignCoordinator {
 				FR.finalizePostSigning(
 					source: source,
 					producedUUID: producedUUID,
-					options: options
+					options: options,
+					// The queue was snapshotted up front, so every source in it is off
+					// limits: signing one app can supersede another app that is still
+					// waiting its turn, and removing that one would leave the run signing
+					// a directory that is no longer there.
+					sparing: sources.compactMap { $0.uuid }
 				)
 
 				items[index].produced = Storage.shared.getSignedApp(uuid: producedUUID)

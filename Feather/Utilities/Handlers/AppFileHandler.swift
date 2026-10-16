@@ -124,6 +124,26 @@ final class AppFileHandler: NSObject, @unchecked Sendable {
 		) { _ in
 			Logger.misc.info("[\(self._uuid)] Added to database")
 		}
+
+		// Downloads only, and it runs after the row above so the snapshot it compares against
+		// includes it — see `removeSupersededImports`.
+		//
+		// A file the user picked out of Files is a deliberate choice of one specific IPA, and
+		// may well be meant to sit next to the copy it would otherwise replace: that path
+		// arrives through `startArchive`, which marks its `Download` with `onlyArchiving`,
+		// while opening an IPA from the Files app or a share sheet arrives with no `Download`
+		// at all. Both are left alone.
+		if
+			let download = _download,
+			!download.onlyArchiving,
+			OptionsManager.shared.options.deleteOldVersions
+		{
+			Storage.shared.removeSupersededImports(
+				identifier: bundle?.bundleIdentifier,
+				version: bundle?.version,
+				keeping: _uuid
+			)
+		}
 	}
 	
 	private func _directory() async throws -> URL {
