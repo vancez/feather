@@ -65,14 +65,14 @@ struct LibraryView: View {
 		NBNavigationView(.localized("Library")) {
 			NBListAdaptable {
 				if
-					!_filteredSignedApps.isEmpty,
-					_selectedScope == .all || _selectedScope == .signed
+					!_filteredImportedApps.isEmpty,
+					_selectedScope == .all || _selectedScope == .imported
 				{
 					NBSection(
-						.localized("Signed"),
-						secondary: _filteredSignedApps.count.description
+						.localized("Imported"),
+						secondary: _filteredImportedApps.count.description
 					) {
-						ForEach(_filteredSignedApps, id: \.uuid) { app in
+						ForEach(_filteredImportedApps, id: \.uuid) { app in
 							LibraryCellView(
 								app: app,
 								selectedInfoAppPresenting: $_selectedInfoAppPresenting,
@@ -86,14 +86,14 @@ struct LibraryView: View {
 				}
 				
 				if
-					!_filteredImportedApps.isEmpty,
-					_selectedScope == .all || _selectedScope == .imported
+					!_filteredSignedApps.isEmpty,
+					_selectedScope == .all || _selectedScope == .signed
 				{
 					NBSection(
-						.localized("Imported"),
-						secondary: _filteredImportedApps.count.description
+						.localized("Signed"),
+						secondary: _filteredSignedApps.count.description
 					) {
-						ForEach(_filteredImportedApps, id: \.uuid) { app in
+						ForEach(_filteredSignedApps, id: \.uuid) { app in
 							LibraryCellView(
 								app: app,
 								selectedInfoAppPresenting: $_selectedInfoAppPresenting,
@@ -286,12 +286,12 @@ extension LibraryView {
 	private func _getAllApps() -> [AppInfoPresentable] {
 		var allApps: [AppInfoPresentable] = []
 		
-		if _selectedScope == .all || _selectedScope == .signed {
-			allApps.append(contentsOf: _filteredSignedApps)
-		}
-		
 		if _selectedScope == .all || _selectedScope == .imported {
 			allApps.append(contentsOf: _filteredImportedApps)
+		}
+		
+		if _selectedScope == .all || _selectedScope == .signed {
+			allApps.append(contentsOf: _filteredSignedApps)
 		}
 		
 		return allApps
