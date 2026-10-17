@@ -18,9 +18,24 @@ struct InstallProgressView: View {
 		VStack(spacing: 12) {
 			_appIcon()
 				.scaleEffect(_isPulsing ? 0.85 : 0.81)
-				.animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: _isPulsing)
 				.onAppear {
-					_isPulsing = true
+					// The view can show up after the install already ended, in which case
+					// there is nothing left to signal.
+					guard !viewModel.isCompleted else { return }
+
+					withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+						_isPulsing = true
+					}
+				}
+				.onChange(of: viewModel.isCompleted) { completed in
+					guard completed else { return }
+
+					// A new animation on the same property takes over from the repeating
+					// one, so the pulse settles instead of continuing forever after the
+					// install is done.
+					withAnimation(.easeInOut(duration: 0.2)) {
+						_isPulsing = false
+					}
 				}
 		}
 	}
