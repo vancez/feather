@@ -216,6 +216,14 @@ extension BatchSignCoordinator {
 				items[index].produced = Storage.shared.getSignedApp(uuid: producedUUID)
 				items[index].phase = .signed
 
+				// Generate the signed copy's icon now rather than when its turn to install
+				// comes. Its row may never have been on screen, so nothing else has warmed
+				// the cache, and the install view would otherwise show the placeholder until
+				// generation finishes.
+				if let produced = items[index].produced {
+					await FRAppIconLoader.prefetch(app: produced)
+				}
+
 				if !options.post_deleteAppAfterSigned {
 					items[index].message = items[index].wasSigned
 						? .localized("Kept the previous copy.")
